@@ -347,7 +347,7 @@ export default function StudentGrader({
             </div>
 
             <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl lg:text-5xl">
-              سامانه نمره‌دهی خودکار
+             Auto Grader
             </h1>
 
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-8 text-white/90 sm:text-base">
