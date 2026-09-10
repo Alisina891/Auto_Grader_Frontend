@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "سامانه نمره‌دهی | بال پرواز",
-  description: "سامانه هوشمند نمره‌دهی پروژه‌های Excel",
+  title: "Auto Grader",
+  description: "Excel Grading System",
 };
 
 export default function RootLayout({
