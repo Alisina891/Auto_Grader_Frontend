@@ -35,10 +35,7 @@ export default function TeacherLogin() {
 
   if (authenticated) {
     return (
-      <TeacherPanel
-        teacherToken="temporary-frontend-token"
-        onLogout={handleLogout}
-      />
+      <TeacherPanel/>
     );
   }
 
