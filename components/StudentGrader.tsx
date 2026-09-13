@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { gradeStudentExcel } from "../lib/api";
+import {
+  gradeStudentExcel,
+  gradeStudentWord,
+} from "../lib/api";
 
 interface StudentGraderProps {
   grade: string;
 }
+
+type ProjectType = "excel" | "word" | null;
 
 interface GradeResult {
   success: boolean;
@@ -45,17 +50,40 @@ const TOP_BACKGROUND_IMAGE =
 export default function StudentGrader({
   grade,
 }: StudentGraderProps) {
-  const [studentName, setStudentName] = useState("");
-  const [attendanceNumber, setAttendanceNumber] = useState("");
-  const [email, setEmail] = useState("");
-  const [projectId, setProjectId] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [projectType, setProjectType] =
+    useState<ProjectType>(null);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<GradeResult | null>(null);
+  const [studentName, setStudentName] =
+    useState("");
 
-  function getAIFeedback(data: GradeResult): string {
+  const [attendanceNumber, setAttendanceNumber] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [projectId, setProjectId] =
+    useState("");
+
+  const [file, setFile] =
+    useState<File | null>(null);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [result, setResult] =
+    useState<GradeResult | null>(null);
+
+  /* =========================================================
+     AI FEEDBACK
+  ========================================================= */
+
+  function getAIFeedback(
+    data: GradeResult
+  ): string {
     if (!data.ai_feedback) {
       return "";
     }
@@ -69,7 +97,10 @@ export default function StudentGrader({
       data.ai_feedback !== null
     ) {
       const feedback =
-        data.ai_feedback as Record<string, unknown>;
+        data.ai_feedback as Record<
+          string,
+          unknown
+        >;
 
       const fields = [
         "message",
@@ -89,7 +120,13 @@ export default function StudentGrader({
     return "";
   }
 
-  function getStudentFeedback(data: GradeResult): string {
+  /* =========================================================
+     STUDENT FEEDBACK
+  ========================================================= */
+
+  function getStudentFeedback(
+    data: GradeResult
+  ): string {
     if (!Array.isArray(data.student_feedback)) {
       return "";
     }
@@ -118,8 +155,15 @@ export default function StudentGrader({
       .join("\n");
   }
 
-  function getFriendlyErrorMessage(message: string): string {
-    const lowerMessage = message.toLowerCase();
+  /* =========================================================
+     FRIENDLY ERROR
+  ========================================================= */
+
+  function getFriendlyErrorMessage(
+    message: string
+  ): string {
+    const lowerMessage =
+      message.toLowerCase();
 
     const duplicateEmail =
       lowerMessage.includes("email") &&
@@ -132,7 +176,9 @@ export default function StudentGrader({
       );
 
     if (duplicateEmail) {
-      return "شما قبلاً ثبت کرده‌اید؛ دیگر اجازه ارسال پروژه ندارید.";
+      return (
+        "شما قبلاً ثبت کرده‌اید؛ دیگر اجازه ارسال پروژه ندارید."
+      );
     }
 
     const duplicateSubmission =
@@ -142,16 +188,49 @@ export default function StudentGrader({
 
     if (duplicateSubmission) {
       return (
-        "این پروژه قبلاً با مشخصات شما ثبت شده است و " +
-        "دیگر اجازه ارسال مجدد ندارید."
+        "این پروژه قبلاً با مشخصات شما ثبت شده است و دیگر اجازه ارسال مجدد ندارید."
       );
     }
 
     return (
-      "در هنگام بررسی پروژه مشکلی به وجود آمد. " +
-      "لطفاً کمی بعد دوباره تلاش کنید."
+      "در هنگام بررسی پروژه مشکلی به وجود آمد. لطفاً کمی بعد دوباره تلاش کنید."
     );
   }
+
+  /* =========================================================
+     SELECT PROJECT TYPE
+  ========================================================= */
+
+  function handleProjectTypeSelect(
+    type: "excel" | "word"
+  ) {
+    setProjectType(type);
+
+    setError("");
+    setResult(null);
+    setFile(null);
+    setProjectId("");
+  }
+
+  /* =========================================================
+     BACK TO PROJECT TYPE
+  ========================================================= */
+
+  function handleBackToTypeSelection() {
+    if (loading) {
+      return;
+    }
+
+    setProjectType(null);
+    setError("");
+    setResult(null);
+    setFile(null);
+    setProjectId("");
+  }
+
+  /* =========================================================
+     SUBMIT
+  ========================================================= */
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -161,18 +240,31 @@ export default function StudentGrader({
     setError("");
     setResult(null);
 
+    if (!projectType) {
+      setError(
+        "لطفاً ابتدا نوع پروژه را انتخاب کنید."
+      );
+      return;
+    }
+
     if (!studentName.trim()) {
-      setError("لطفاً نام و تخلص خود را وارد کنید.");
+      setError(
+        "لطفاً نام و تخلص خود را وارد کنید."
+      );
       return;
     }
 
     if (!attendanceNumber.trim()) {
-      setError("لطفاً شماره حاضری خود را وارد کنید.");
+      setError(
+        "لطفاً شماره حاضری خود را وارد کنید."
+      );
       return;
     }
 
     if (!email.trim()) {
-      setError("لطفاً ایمیل خود را وارد کنید.");
+      setError(
+        "لطفاً ایمیل خود را وارد کنید."
+      );
       return;
     }
 
@@ -180,43 +272,76 @@ export default function StudentGrader({
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email.trim())) {
-      setError("لطفاً یک آدرس ایمیل معتبر وارد کنید.");
+      setError(
+        "لطفاً یک آدرس ایمیل معتبر وارد کنید."
+      );
       return;
     }
 
     if (!projectId) {
-      setError("لطفاً یکی از پروژه‌های 1 یا 2 را انتخاب کنید.");
+      setError(
+        "لطفاً یکی از پروژه‌های 1 یا 2 را انتخاب کنید."
+      );
       return;
     }
 
     if (!file) {
-      setError("لطفاً فایل Excel پروژه را انتخاب کنید.");
+      setError(
+        projectType === "excel"
+          ? "لطفاً فایل Excel پروژه را انتخاب کنید."
+          : "لطفاً فایل Word پروژه را انتخاب کنید."
+      );
       return;
     }
 
-    const fileName = file.name.toLowerCase();
+    const fileName =
+      file.name.toLowerCase();
 
-    if (
-      !fileName.endsWith(".xlsx") &&
-      !fileName.endsWith(".xlsm")
-    ) {
-      setError(
-        "فقط فایل‌های Excel با فرمت .xlsx یا .xlsm قابل قبول هستند."
-      );
-      return;
+    if (projectType === "excel") {
+      if (
+        !fileName.endsWith(".xlsx") &&
+        !fileName.endsWith(".xlsm")
+      ) {
+        setError(
+          "فقط فایل‌های Excel با فرمت .xlsx یا .xlsm قابل قبول هستند."
+        );
+        return;
+      }
+    }
+
+    if (projectType === "word") {
+      if (!fileName.endsWith(".docx")) {
+        setError(
+          "فقط فایل Word با فرمت .docx قابل قبول است."
+        );
+        return;
+      }
     }
 
     try {
       setLoading(true);
 
-      const data = await gradeStudentExcel(
-        grade,
-        projectId,
-        studentName.trim(),
-        attendanceNumber.trim(),
-        email.trim(),
-        file
-      );
+      let data;
+
+      if (projectType === "excel") {
+        data = await gradeStudentExcel(
+          grade,
+          projectId,
+          studentName.trim(),
+          attendanceNumber.trim(),
+          email.trim(),
+          file
+        );
+      } else {
+        data = await gradeStudentWord(
+          grade,
+          projectId,
+          studentName.trim(),
+          attendanceNumber.trim(),
+          email.trim(),
+          file
+        );
+      }
 
       setResult(data);
 
@@ -231,7 +356,9 @@ export default function StudentGrader({
     } catch (err) {
       if (err instanceof Error) {
         setError(
-          getFriendlyErrorMessage(err.message)
+          getFriendlyErrorMessage(
+            err.message
+          )
         );
       } else {
         setError(
@@ -242,6 +369,10 @@ export default function StudentGrader({
       setLoading(false);
     }
   }
+
+  /* =========================================================
+     FEEDBACK
+  ========================================================= */
 
   const aiFeedback = result
     ? getAIFeedback(result)
@@ -264,6 +395,16 @@ export default function StudentGrader({
         )
       : 0;
 
+  const projectTitle =
+    projectType === "excel"
+      ? "Excel"
+      : "Word";
+
+  const projectDescription =
+    projectType === "excel"
+      ? "پروژه Excel خود را ارسال کنید تا ساختار، داده‌ها، فرمول‌ها و بخش‌های پروژه بررسی شوند."
+      : "پروژه Word خود را ارسال کنید تا ساختار، محتوا و قوانین پروژه بررسی شوند.";
+
   return (
     <main
       dir="rtl"
@@ -275,9 +416,10 @@ export default function StudentGrader({
 
       <div className="fixed inset-0 z-0">
         <div
-          className="absolute inset-0 bg-cover bg-center scale-105 animate-backgroundZoom"
+          className="absolute inset-0 scale-105 bg-cover bg-center animate-backgroundZoom"
           style={{
-            backgroundImage: `url("${TOP_BACKGROUND_IMAGE}")`,
+            backgroundImage:
+              `url("${TOP_BACKGROUND_IMAGE}")`,
           }}
         />
 
@@ -323,22 +465,16 @@ export default function StudentGrader({
         <header className="mb-8 text-center animate-fadeUp sm:mb-12">
           <div className="mx-auto max-w-3xl">
 
-            {/* Flying Wings Logo */}
+            {/* Logo */}
 
             <div className="mb-7 flex justify-center">
               <div className="relative flex h-32 w-32 items-center justify-center">
-
-                {/* Outer rotating ring */}
 
                 <div className="absolute inset-0 rounded-full border border-cyan-300/20 animate-spinSlow" />
 
                 <div className="absolute inset-2 rounded-full border border-dashed border-blue-300/20 animate-spinReverse" />
 
-                {/* Glow */}
-
                 <div className="absolute h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl animate-glowPulse" />
-
-                {/* Logo */}
 
                 <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-[26px] border border-white/20 bg-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl animate-logoFloat">
 
@@ -370,16 +506,12 @@ export default function StudentGrader({
 
                 </div>
 
-                {/* Small orbit dots */}
-
                 <span className="absolute right-0 top-5 h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_15px_4px_rgba(34,211,238,0.7)] animate-pulse" />
 
                 <span className="absolute bottom-4 left-1 h-2 w-2 rounded-full bg-blue-300 shadow-[0_0_15px_4px_rgba(96,165,250,0.7)] animate-ping" />
 
               </div>
             </div>
-
-            {/* Brand */}
 
             <div className="mb-3">
               <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300 shadow-lg backdrop-blur-md sm:text-xs">
@@ -393,12 +525,8 @@ export default function StudentGrader({
             </h1>
 
             <p className="mx-auto mt-4 max-w-2xl px-3 text-sm leading-7 text-white/75 sm:text-base sm:leading-8">
-              فایل پروژه Excel خود را ارسال کنید تا سیستم
-              به‌صورت خودکار پروژه شما را بررسی، نمره‌دهی
-              و نتیجه را نمایش دهد.
+              سیستم هوشمند بررسی و نمره‌دهی پروژه‌های دانش‌آموزان
             </p>
-
-            {/* Grade */}
 
             <div className="mt-7 flex justify-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.08] px-5 py-2.5 text-sm font-black text-white shadow-[0_15px_40px_rgba(0,0,0,0.25)] backdrop-blur-xl animate-badgeGlow">
@@ -439,455 +567,880 @@ export default function StudentGrader({
             </div>
 
             <div className="min-w-0">
+
               <h2 className="font-black text-amber-200">
                 لطفاً کمی صبر کنید
               </h2>
 
               <p className="mt-1.5 text-xs leading-6 text-amber-100/75 sm:text-sm">
-                ممکن است سیستم در اولین درخواست تا حدود
-                یک دقیقه زمان نیاز داشته باشد تا آماده شود.
+                ممکن است سیستم در اولین درخواست تا حدود یک دقیقه زمان نیاز داشته باشد تا آماده شود.
               </p>
 
               <p className="mt-1.5 text-xs font-bold leading-6 text-amber-200 sm:text-sm">
                 اگر خطایی دریافت کردید، کمی بعد دوباره تلاش کنید.
               </p>
-            </div>
 
+            </div>
           </div>
         </section>
 
         {/* ===================================================
-            INSTRUCTIONS
+            PROJECT TYPE SELECTION
         ==================================================== */}
 
-        <section className="mb-5 overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4 shadow-2xl backdrop-blur-xl animate-fadeUp delay-200 sm:rounded-3xl sm:p-6">
+        {!projectType && (
+          <section className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/[0.07] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.35)] backdrop-blur-xl animate-fadeUp sm:rounded-[2rem] sm:p-8">
 
-          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="mb-8 text-center">
 
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl">
-              📋
-            </div>
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-3xl shadow-lg">
+                📚
+              </div>
 
-            <div className="min-w-0 flex-1">
-
-              <h2 className="text-base font-black text-white sm:text-lg">
-                قبل از ارسال پروژه
+              <h2 className="text-2xl font-black text-white sm:text-3xl">
+                نوع پروژه خود را انتخاب کنید
               </h2>
 
-              <ul className="mt-4 space-y-3 text-xs leading-6 text-white/65 sm:text-sm">
-
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400">✓</span>
-                  <span>
-                    فایل اصلی Excel پروژه را ارسال کنید.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400">✓</span>
-                  <span>
-                    عکس یا فایل PDF قابل قبول نیست.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400">✓</span>
-                  <span>
-                    فرمت فایل باید
-                    <b
-                      dir="ltr"
-                      className="mx-1 rounded bg-cyan-400/10 px-1.5 text-cyan-300"
-                    >
-                      .xlsx
-                    </b>
-                    یا
-                    <b
-                      dir="ltr"
-                      className="mx-1 rounded bg-cyan-400/10 px-1.5 text-cyan-300"
-                    >
-                      .xlsm
-                    </b>
-                    باشد.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400">✓</span>
-                  <span>
-                    شماره پروژه را از بین پروژه‌های 1 یا 2 انتخاب کنید.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400">✓</span>
-                  <span>
-                    ایمیل معتبر خود را وارد کنید.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400">✓</span>
-                  <span>
-                    هر ایمیل فقط برای یک ارسال پروژه قابل استفاده است.
-                  </span>
-                </li>
-
-              </ul>
-
-            </div>
-          </div>
-        </section>
-
-        {/* ===================================================
-            FORM
-        ==================================================== */}
-
-        <section className="relative overflow-hidden rounded-[1.7rem] border border-white/40 bg-white/[0.97] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.4)] animate-fadeUp delay-300 sm:rounded-[2rem] sm:p-8">
-
-          <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-blue-500/10 blur-3xl animate-pulse" />
-
-          <div className="absolute -bottom-20 -left-20 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl animate-pulse" />
-
-          <div className="relative">
-
-            <div className="mb-7 flex items-center gap-3">
-
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100 text-2xl shadow-lg">
-                📝
-              </div>
-
-              <div>
-                <h2 className="text-xl font-black text-slate-900 sm:text-2xl">
-                  ارسال پروژه
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                  معلومات خود را وارد کرده و فایل Excel را انتخاب کنید.
-                </p>
-              </div>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-white/60">
+                ابتدا مشخص کنید که می‌خواهید پروژه Excel یا Word خود را ارسال کنید.
+              </p>
 
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-5 sm:space-y-6"
-            >
-
-              {/* Name */}
-
-              <div>
-                <label
-                  htmlFor="studentName"
-                  className="mb-2 block text-sm font-black text-slate-700"
-                >
-                  👤 نام و تخلص
-                </label>
-
-                <input
-                  id="studentName"
-                  type="text"
-                  value={studentName}
-                  onChange={(e) =>
-                    setStudentName(e.target.value)
-                  }
-                  placeholder="نام و تخلص خود را وارد کنید"
-                  autoComplete="name"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-1 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                />
-              </div>
-
-              {/* Attendance */}
-
-              <div>
-                <label
-                  htmlFor="attendanceNumber"
-                  className="mb-2 block text-sm font-black text-slate-700"
-                >
-                  🔢 شماره حاضری
-                </label>
-
-                <input
-                  id="attendanceNumber"
-                  type="text"
-                  value={attendanceNumber}
-                  onChange={(e) =>
-                    setAttendanceNumber(e.target.value)
-                  }
-                  placeholder="شماره حاضری خود را وارد کنید"
-                  inputMode="numeric"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-1 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                />
-              </div>
-
-              {/* Email */}
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-black text-slate-700"
-                >
-                  ✉️ ایمیل
-                </label>
-
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                  placeholder="student@gmail.com"
-                  autoComplete="email"
-                  dir="ltr"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-1 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                />
-
-                <p className="mt-2 text-xs leading-6 text-slate-400">
-                  ℹ️ هر ایمیل فقط یک بار برای ارسال پروژه قابل استفاده است.
-                </p>
-              </div>
+            <div className="grid gap-5 md:grid-cols-2">
 
               {/* =================================================
-                  PROJECT SELECTION
-              ================================================== */}
-
-              <div>
-
-                <label className="mb-3 block text-sm font-black text-slate-700">
-                  📌 شماره پروژه
-                </label>
-
-                <div className="grid grid-cols-2 gap-3">
-
-                  {/* Project 1 */}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProjectId("1");
-                      setError("");
-                    }}
-                    className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-center transition-all duration-300 sm:p-5 ${
-                      projectId === "1"
-                        ? "scale-[1.03] border-blue-500 bg-blue-50 shadow-[0_12px_35px_rgba(59,130,246,0.22)]"
-                        : "border-slate-200 bg-slate-50 hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/50"
-                    }`}
-                  >
-
-                    {projectId === "1" && (
-                      <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white animate-pop">
-                        ✓
-                      </span>
-                    )}
-
-                    <div
-                      className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl transition-all duration-300 ${
-                        projectId === "1"
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 animate-iconBounce"
-                          : "bg-blue-100 text-blue-600 group-hover:scale-110"
-                      }`}
-                    >
-                      1
-                    </div>
-
-                    <p className="mt-3 text-sm font-black text-slate-800">
-                      پروژه 1
-                    </p>
-
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Project One
-                    </p>
-
-                  </button>
-
-                  {/* Project 2 */}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProjectId("2");
-                      setError("");
-                    }}
-                    className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-center transition-all duration-300 sm:p-5 ${
-                      projectId === "2"
-                        ? "scale-[1.03] border-indigo-500 bg-indigo-50 shadow-[0_12px_35px_rgba(99,102,241,0.22)]"
-                        : "border-slate-200 bg-slate-50 hover:-translate-y-1 hover:border-indigo-300 hover:bg-indigo-50/50"
-                    }`}
-                  >
-
-                    {projectId === "2" && (
-                      <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white animate-pop">
-                        ✓
-                      </span>
-                    )}
-
-                    <div
-                      className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl transition-all duration-300 ${
-                        projectId === "2"
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 animate-iconBounce"
-                          : "bg-indigo-100 text-indigo-600 group-hover:scale-110"
-                      }`}
-                    >
-                      2
-                    </div>
-
-                    <p className="mt-3 text-sm font-black text-slate-800">
-                      پروژه 2
-                    </p>
-
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Project Two
-                    </p>
-
-                  </button>
-
-                </div>
-
-                <p className="mt-2 text-xs text-slate-400">
-                  لطفاً پروژه‌ای را انتخاب کنید که می‌خواهید ارسال کنید.
-                </p>
-
-              </div>
-
-              {/* File */}
-
-              <div>
-
-                <label
-                  htmlFor="excelFile"
-                  className="mb-2 block text-sm font-black text-slate-700"
-                >
-                  📊 فایل پروژه Excel
-                </label>
-
-                <label
-                  htmlFor="excelFile"
-                  className={`group relative flex min-h-[215px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[25px] border-2 border-dashed p-6 text-center transition-all duration-500 ${
-                    file
-                      ? "border-emerald-400 bg-emerald-50 shadow-[0_15px_40px_rgba(16,185,129,0.12)]"
-                      : "border-slate-300 bg-gradient-to-b from-slate-50 to-blue-50/60 hover:-translate-y-1 hover:border-blue-400 hover:shadow-[0_15px_40px_rgba(59,130,246,0.12)]"
-                  }`}
-                >
-
-                  <div className="absolute h-36 w-36 rounded-full bg-blue-400/10 blur-3xl transition-transform duration-700 group-hover:scale-150" />
-
-                  <div
-                    className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:rotate-3 group-hover:scale-110 ${
-                      file
-                        ? "bg-emerald-100"
-                        : "bg-gradient-to-br from-blue-100 to-cyan-100"
-                    }`}
-                  >
-                    {file ? "✓" : "📊"}
-                  </div>
-
-                  <p className="relative z-10 mt-4 max-w-full break-all px-3 text-sm font-black text-slate-800 sm:text-base">
-                    {file
-                      ? file.name
-                      : "برای انتخاب فایل کلیک کنید"}
-                  </p>
-
-                  <p className="relative z-10 mt-2 text-xs leading-5 text-slate-500">
-                    {file
-                      ? "فایل انتخاب شد — آماده ارسال"
-                      : "فایل Excel خود را انتخاب کنید"}
-                  </p>
-
-                  <div className="relative z-10 mt-3 flex items-center gap-2">
-
-                    <span className="rounded-lg bg-blue-100 px-2 py-1 text-[10px] font-black text-blue-600">
-                      .xlsx
-                    </span>
-
-                    <span className="text-slate-300">
-                      یا
-                    </span>
-
-                    <span className="rounded-lg bg-indigo-100 px-2 py-1 text-[10px] font-black text-indigo-600">
-                      .xlsm
-                    </span>
-
-                  </div>
-
-                  <input
-                    id="excelFile"
-                    type="file"
-                    accept=".xlsx,.xlsm"
-                    className="hidden"
-                    onChange={(e) => {
-                      setFile(
-                        e.target.files?.[0] || null
-                      );
-                      setError("");
-                    }}
-                  />
-
-                </label>
-              </div>
-
-              {/* Error */}
-
-              {error && (
-                <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 animate-errorShake">
-
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-xl">
-                    ⚠️
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="font-black text-red-800">
-                      توجه
-                    </p>
-
-                    <p className="mt-1 text-xs leading-6 text-red-700 sm:text-sm">
-                      {error}
-                    </p>
-                  </div>
-
-                </div>
-              )}
-
-              {/* Submit */}
+                  EXCEL CARD
+              ================================================= */}
 
               <button
-                type="submit"
-                disabled={loading}
-                className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-5 py-4 text-sm font-black text-white shadow-[0_15px_40px_rgba(37,99,235,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(37,99,235,0.4)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                onClick={() =>
+                  handleProjectTypeSelect("excel")
+                }
+                className="project-card group relative min-h-[300px] overflow-hidden rounded-[2rem] border border-emerald-300/20 bg-gradient-to-br from-emerald-950 via-green-950 to-slate-950 p-6 text-right shadow-[0_25px_70px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-3 hover:border-emerald-300/50 hover:shadow-[0_35px_90px_rgba(16,185,129,0.22)]"
               >
 
-                {/* Shine */}
+                {/* Excel background glow */}
 
-                <span className="absolute inset-y-0 -left-[120%] w-1/2 skew-x-[-20deg] bg-gradient-to-r from-transparent via-white/30 to-transparent transition-all duration-700 group-hover:left-[140%]" />
+                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl transition-transform duration-700 group-hover:scale-150" />
 
-                <span className="relative z-10 flex items-center justify-center gap-3">
+                <div className="absolute -bottom-24 -left-20 h-60 w-60 rounded-full bg-green-500/15 blur-3xl transition-transform duration-700 group-hover:scale-125" />
 
-                  {loading ? (
-                    <>
-                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                {/* Decorative grid */}
 
-                      <span>
-                        در حال بررسی پروژه...
+                <div className="absolute inset-0 opacity-[0.06]">
+                  <div
+                    className="h-full w-full"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(rgba(255,255,255,.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.8) 1px, transparent 1px)",
+                      backgroundSize:
+                        "34px 34px",
+                    }}
+                  />
+                </div>
+
+                <div className="relative z-10">
+
+                  {/* Excel Icon */}
+
+                  <div className="mb-6 flex items-center justify-between">
+
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-emerald-300/30 bg-emerald-400/10 shadow-[0_15px_40px_rgba(16,185,129,0.2)] backdrop-blur-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+
+                      <svg
+                        viewBox="0 0 64 64"
+                        className="h-12 w-12"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect
+                          x="20"
+                          y="8"
+                          width="34"
+                          height="48"
+                          rx="5"
+                          fill="#166534"
+                          opacity="0.9"
+                        />
+
+                        <path
+                          d="M28 20H47M28 30H47M28 40H47M28 50H47"
+                          stroke="#86EFAC"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+
+                        <path
+                          d="M36 8V56"
+                          stroke="#86EFAC"
+                          strokeWidth="2"
+                          opacity="0.5"
+                        />
+
+                        <rect
+                          x="8"
+                          y="16"
+                          width="29"
+                          height="32"
+                          rx="5"
+                          fill="#22C55E"
+                        />
+
+                        <path
+                          d="M16 25L29 39M29 25L16 39"
+                          stroke="white"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+
+                    </div>
+
+                    <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                      Spreadsheet
+                    </span>
+
+                  </div>
+
+                  <h3 className="text-3xl font-black text-white">
+                    Excel
+                  </h3>
+
+                  <p className="mt-2 text-sm font-bold text-emerald-300">
+                    پروژه‌های Microsoft Excel
+                  </p>
+
+                  <p className="mt-4 max-w-md text-sm leading-7 text-white/60">
+                    فایل Excel خود را ارسال کنید تا سیستم ساختار، ستون‌ها، داده‌ها، فرمول‌ها، جدول‌ها و سایر قوانین پروژه را بررسی کند.
+                  </p>
+
+                  <div className="mt-6 flex items-center justify-between">
+
+                    <div className="flex gap-2">
+
+                      <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/60">
+                        .xlsx
                       </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1">
-                        🚀
+
+                      <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/60">
+                        .xlsm
                       </span>
 
-                      <span>
-                        بررسی و نمره‌دهی پروژه
-                      </span>
-                    </>
-                  )}
+                    </div>
 
-                </span>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-xl text-emerald-300 transition-transform duration-300 group-hover:-translate-x-1">
+                      ←
+                    </span>
 
+                  </div>
+
+                </div>
               </button>
 
-            </form>
-          </div>
-        </section>
+              {/* =================================================
+                  WORD CARD
+              ================================================= */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleProjectTypeSelect("word")
+                }
+                className="project-card group relative min-h-[300px] overflow-hidden rounded-[2rem] border border-blue-300/20 bg-gradient-to-br from-blue-950 via-indigo-950 to-slate-950 p-6 text-right shadow-[0_25px_70px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-3 hover:border-blue-300/50 hover:shadow-[0_35px_90px_rgba(59,130,246,0.22)]"
+              >
+
+                {/* Word background glow */}
+
+                <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl transition-transform duration-700 group-hover:scale-150" />
+
+                <div className="absolute -bottom-24 -right-20 h-60 w-60 rounded-full bg-indigo-500/20 blur-3xl transition-transform duration-700 group-hover:scale-125" />
+
+                {/* Decorative paper lines */}
+
+                <div className="absolute right-8 top-8 h-48 w-36 rotate-6 rounded-xl border border-blue-200/10 bg-white/[0.025] opacity-70">
+                  <div className="space-y-3 p-5">
+                    <div className="h-2 rounded-full bg-blue-300/10" />
+                    <div className="h-2 rounded-full bg-blue-300/10" />
+                    <div className="h-2 w-3/4 rounded-full bg-blue-300/10" />
+                    <div className="mt-5 h-2 rounded-full bg-blue-300/10" />
+                    <div className="h-2 rounded-full bg-blue-300/10" />
+                  </div>
+                </div>
+
+                <div className="relative z-10">
+
+                  {/* Word Icon */}
+
+                  <div className="mb-6 flex items-center justify-between">
+
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-blue-300/30 bg-blue-400/10 shadow-[0_15px_40px_rgba(59,130,246,0.2)] backdrop-blur-xl transition-all duration-500 group-hover:scale-110 group-hover:-rotate-3">
+
+                      <svg
+                        viewBox="0 0 64 64"
+                        className="h-12 w-12"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect
+                          x="20"
+                          y="7"
+                          width="36"
+                          height="50"
+                          rx="5"
+                          fill="#1D4ED8"
+                          opacity="0.9"
+                        />
+
+                        <path
+                          d="M29 18H47M29 25H47M29 32H47M29 39H47"
+                          stroke="#BFDBFE"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+
+                        <rect
+                          x="8"
+                          y="15"
+                          width="30"
+                          height="34"
+                          rx="5"
+                          fill="#2563EB"
+                        />
+
+                        <path
+                          d="M15 23L19 40L23 29L27 40L32 23"
+                          stroke="white"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+
+                    </div>
+
+                    <span className="rounded-full border border-blue-300/20 bg-blue-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-300">
+                      Document
+                    </span>
+
+                  </div>
+
+                  <h3 className="text-3xl font-black text-white">
+                    Word
+                  </h3>
+
+                  <p className="mt-2 text-sm font-bold text-blue-300">
+                    پروژه‌های Microsoft Word
+                  </p>
+
+                  <p className="mt-4 max-w-md text-sm leading-7 text-white/60">
+                    فایل Word خود را ارسال کنید تا سیستم قوانین و ساختار پروژه را بررسی کرده و نتیجه را نمایش دهد.
+                  </p>
+
+                  <div className="mt-6 flex items-center justify-between">
+
+                    <span className="rounded-lg bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/60">
+                      .docx
+                    </span>
+
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-400/10 text-xl text-blue-300 transition-transform duration-300 group-hover:-translate-x-1">
+                      ←
+                    </span>
+
+                  </div>
+
+                </div>
+              </button>
+
+            </div>
+          </section>
+        )}
+
+        {/* ===================================================
+            SELECTED PROJECT FORM
+        ==================================================== */}
+
+        {projectType && (
+          <>
+
+            {/* Selected type header */}
+
+            <section className="mb-5 overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-xl animate-fadeUp sm:p-6">
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                <div className="flex items-center gap-4">
+
+                  <div
+                    className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-3xl shadow-lg ${
+                      projectType === "excel"
+                        ? "border border-emerald-300/20 bg-emerald-400/10"
+                        : "border border-blue-300/20 bg-blue-400/10"
+                    }`}
+                  >
+                    {projectType === "excel"
+                      ? "📊"
+                      : "📄"}
+                  </div>
+
+                  <div>
+
+                    <p className="text-xs font-bold text-white/40">
+                      نوع پروژه انتخاب‌شده
+                    </p>
+
+                    <h2 className="mt-1 text-2xl font-black text-white">
+                      {projectTitle}
+                    </h2>
+
+                    <p
+                      className={`mt-1 text-xs font-bold ${
+                        projectType === "excel"
+                          ? "text-emerald-300"
+                          : "text-blue-300"
+                      }`}
+                    >
+                      {projectDescription}
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    handleBackToTypeSelection
+                  }
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-black text-white/70 transition hover:bg-white/10 hover:text-white"
+                >
+                  ← تغییر نوع پروژه
+                </button>
+
+              </div>
+
+            </section>
+
+            {/* Instructions */}
+
+            <section className="mb-5 overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4 shadow-2xl backdrop-blur-xl animate-fadeUp delay-100 sm:rounded-3xl sm:p-6">
+
+              <div className="flex items-start gap-3 sm:gap-4">
+
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl">
+                  📋
+                </div>
+
+                <div className="min-w-0 flex-1">
+
+                  <h2 className="text-base font-black text-white sm:text-lg">
+                    قبل از ارسال پروژه
+                  </h2>
+
+                  <ul className="mt-4 space-y-3 text-xs leading-6 text-white/65 sm:text-sm">
+
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400">
+                        ✓
+                      </span>
+
+                      <span>
+                        فایل اصلی پروژه خود را ارسال کنید.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400">
+                        ✓
+                      </span>
+
+                      <span>
+                        عکس یا PDF قابل قبول نیست.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400">
+                        ✓
+                      </span>
+
+                      <span>
+                        فرمت قابل قبول:
+                        {" "}
+
+                        <b
+                          dir="ltr"
+                          className="mx-1 rounded bg-cyan-400/10 px-1.5 text-cyan-300"
+                        >
+                          {projectType === "excel"
+                            ? ".xlsx / .xlsm"
+                            : ".docx"}
+                        </b>
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400">
+                        ✓
+                      </span>
+
+                      <span>
+                        شماره پروژه را از بین پروژه‌های 1 یا 2 انتخاب کنید.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400">
+                        ✓
+                      </span>
+
+                      <span>
+                        ایمیل معتبر خود را وارد کنید.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400">
+                        ✓
+                      </span>
+
+                      <span>
+                        هر ایمیل فقط برای یک ارسال پروژه قابل استفاده است.
+                      </span>
+                    </li>
+
+                  </ul>
+
+                </div>
+              </div>
+            </section>
+
+            {/* =================================================
+                FORM
+            ================================================= */}
+
+            <section className="relative overflow-hidden rounded-[1.7rem] border border-white/40 bg-white/[0.97] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.4)] animate-fadeUp delay-200 sm:rounded-[2rem] sm:p-8">
+
+              <div
+                className={`absolute -right-20 -top-20 h-52 w-52 rounded-full blur-3xl animate-pulse ${
+                  projectType === "excel"
+                    ? "bg-emerald-500/10"
+                    : "bg-blue-500/10"
+                }`}
+              />
+
+              <div
+                className={`absolute -bottom-20 -left-20 h-52 w-52 rounded-full blur-3xl animate-pulse ${
+                  projectType === "excel"
+                    ? "bg-green-400/10"
+                    : "bg-indigo-400/10"
+                }`}
+              />
+
+              <div className="relative">
+
+                {/* Form Header */}
+
+                <div className="mb-7 flex items-center gap-3">
+
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl shadow-lg ${
+                      projectType === "excel"
+                        ? "bg-emerald-100"
+                        : "bg-blue-100"
+                    }`}
+                  >
+                    {projectType === "excel"
+                      ? "📊"
+                      : "📄"}
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-xl font-black text-slate-900 sm:text-2xl">
+                      ارسال پروژه {projectTitle}
+                    </h2>
+
+                    <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                      معلومات خود را وارد کرده و فایل پروژه را انتخاب کنید.
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <form
+                  onSubmit={handleSubmit}
+                  className="space-y-5 sm:space-y-6"
+                >
+
+                  {/* Name */}
+
+                  <div>
+
+                    <label
+                      htmlFor="studentName"
+                      className="mb-2 block text-sm font-black text-slate-700"
+                    >
+                      👤 نام و تخلص
+                    </label>
+
+                    <input
+                      id="studentName"
+                      type="text"
+                      value={studentName}
+                      onChange={(e) =>
+                        setStudentName(
+                          e.target.value
+                        )
+                      }
+                      placeholder="نام و تخلص خود را وارد کنید"
+                      autoComplete="name"
+                      disabled={loading}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-1 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+
+                  </div>
+
+                  {/* Attendance */}
+
+                  <div>
+
+                    <label
+                      htmlFor="attendanceNumber"
+                      className="mb-2 block text-sm font-black text-slate-700"
+                    >
+                      🔢 شماره حاضری
+                    </label>
+
+                    <input
+                      id="attendanceNumber"
+                      type="text"
+                      value={attendanceNumber}
+                      onChange={(e) =>
+                        setAttendanceNumber(
+                          e.target.value
+                        )
+                      }
+                      placeholder="شماره حاضری خود را وارد کنید"
+                      inputMode="numeric"
+                      disabled={loading}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-1 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+
+                  </div>
+
+                  {/* Email */}
+
+                  <div>
+
+                    <label
+                      htmlFor="email"
+                      className="mb-2 block text-sm font-black text-slate-700"
+                    >
+                      ✉️ ایمیل
+                    </label>
+
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) =>
+                        setEmail(
+                          e.target.value
+                        )
+                      }
+                      placeholder="student@gmail.com"
+                      autoComplete="email"
+                      dir="ltr"
+                      disabled={loading}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm text-slate-900 outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-1 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+
+                    <p className="mt-2 text-xs leading-6 text-slate-400">
+                      ℹ️ هر ایمیل فقط یک بار برای ارسال پروژه قابل استفاده است.
+                    </p>
+
+                  </div>
+
+                  {/* Project */}
+
+                  <div>
+
+                    <label className="mb-3 block text-sm font-black text-slate-700">
+                      📌 شماره پروژه
+                    </label>
+
+                    <div className="grid grid-cols-2 gap-3">
+
+                      {/* Project 1 */}
+
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => {
+                          setProjectId("1");
+                          setError("");
+                        }}
+                        className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-center transition-all duration-300 sm:p-5 ${
+                          projectId === "1"
+                            ? "scale-[1.03] border-blue-500 bg-blue-50 shadow-[0_12px_35px_rgba(59,130,246,0.22)]"
+                            : "border-slate-200 bg-slate-50 hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/50"
+                        }`}
+                      >
+
+                        {projectId === "1" && (
+                          <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white animate-pop">
+                            ✓
+                          </span>
+                        )}
+
+                        <div
+                          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl transition-all duration-300 ${
+                            projectId === "1"
+                              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 animate-iconBounce"
+                              : "bg-blue-100 text-blue-600 group-hover:scale-110"
+                          }`}
+                        >
+                          1
+                        </div>
+
+                        <p className="mt-3 text-sm font-black text-slate-800">
+                          پروژه 1
+                        </p>
+
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Project One
+                        </p>
+
+                      </button>
+
+                      {/* Project 2 */}
+
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => {
+                          setProjectId("2");
+                          setError("");
+                        }}
+                        className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-center transition-all duration-300 sm:p-5 ${
+                          projectId === "2"
+                            ? "scale-[1.03] border-indigo-500 bg-indigo-50 shadow-[0_12px_35px_rgba(99,102,241,0.22)]"
+                            : "border-slate-200 bg-slate-50 hover:-translate-y-1 hover:border-indigo-300 hover:bg-indigo-50/50"
+                        }`}
+                      >
+
+                        {projectId === "2" && (
+                          <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white animate-pop">
+                            ✓
+                          </span>
+                        )}
+
+                        <div
+                          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-2xl transition-all duration-300 ${
+                            projectId === "2"
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 animate-iconBounce"
+                              : "bg-indigo-100 text-indigo-600 group-hover:scale-110"
+                          }`}
+                        >
+                          2
+                        </div>
+
+                        <p className="mt-3 text-sm font-black text-slate-800">
+                          پروژه 2
+                        </p>
+
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Project Two
+                        </p>
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                  {/* File */}
+
+                  <div>
+
+                    <label
+                      htmlFor="projectFile"
+                      className="mb-2 block text-sm font-black text-slate-700"
+                    >
+                      {projectType === "excel"
+                        ? "📊 فایل پروژه Excel"
+                        : "📄 فایل پروژه Word"}
+                    </label>
+
+                    <label
+                      htmlFor="projectFile"
+                      className={`group relative flex min-h-[215px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[25px] border-2 border-dashed p-6 text-center transition-all duration-500 ${
+                        file
+                          ? "border-emerald-400 bg-emerald-50 shadow-[0_15px_40px_rgba(16,185,129,0.12)]"
+                          : projectType === "excel"
+                          ? "border-slate-300 bg-gradient-to-b from-slate-50 to-emerald-50/60 hover:-translate-y-1 hover:border-emerald-400 hover:shadow-[0_15px_40px_rgba(16,185,129,0.12)]"
+                          : "border-slate-300 bg-gradient-to-b from-slate-50 to-blue-50/60 hover:-translate-y-1 hover:border-blue-400 hover:shadow-[0_15px_40px_rgba(59,130,246,0.12)]"
+                      }`}
+                    >
+
+                      <div
+                        className={`absolute h-36 w-36 rounded-full blur-3xl transition-transform duration-700 group-hover:scale-150 ${
+                          projectType === "excel"
+                            ? "bg-emerald-400/10"
+                            : "bg-blue-400/10"
+                        }`}
+                      />
+
+                      {/* File icon */}
+
+                      <div
+                        className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:rotate-3 group-hover:scale-110 ${
+                          file
+                            ? "bg-emerald-100"
+                            : projectType === "excel"
+                            ? "bg-emerald-100"
+                            : "bg-blue-100"
+                        }`}
+                      >
+                        {file
+                          ? "✓"
+                          : projectType === "excel"
+                          ? "📊"
+                          : "📄"}
+                      </div>
+
+                      <p className="relative z-10 mt-4 max-w-full break-all px-3 text-sm font-black text-slate-800 sm:text-base">
+                        {file
+                          ? file.name
+                          : "برای انتخاب فایل کلیک کنید"}
+                      </p>
+
+                      <p className="relative z-10 mt-2 text-xs leading-5 text-slate-500">
+                        {file
+                          ? "فایل انتخاب شد — آماده ارسال"
+                          : `فایل ${projectTitle} خود را انتخاب کنید`}
+                      </p>
+
+                      <div className="relative z-10 mt-3 flex items-center gap-2">
+
+                        {projectType === "excel" ? (
+                          <>
+                            <span className="rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700">
+                              .xlsx
+                            </span>
+
+                            <span className="text-slate-300">
+                              یا
+                            </span>
+
+                            <span className="rounded-lg bg-green-100 px-2 py-1 text-[10px] font-black text-green-700">
+                              .xlsm
+                            </span>
+                          </>
+                        ) : (
+                          <span className="rounded-lg bg-blue-100 px-2 py-1 text-[10px] font-black text-blue-700">
+                            .docx
+                          </span>
+                        )}
+
+                      </div>
+
+                      <input
+                        id="projectFile"
+                        type="file"
+                        accept={
+                          projectType === "excel"
+                            ? ".xlsx,.xlsm"
+                            : ".docx"
+                        }
+                        className="hidden"
+                        disabled={loading}
+                        onChange={(e) => {
+                          setFile(
+                            e.target.files?.[0] ||
+                              null
+                          );
+
+                          setError("");
+                        }}
+                      />
+
+                    </label>
+
+                  </div>
+
+                  {/* Error */}
+
+                  {error && (
+                    <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 animate-errorShake">
+
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-xl">
+                        ⚠️
+                      </div>
+
+                      <div className="min-w-0">
+
+                        <p className="font-black text-red-800">
+                          توجه
+                        </p>
+
+                        <p className="mt-1 text-xs leading-6 text-red-700 sm:text-sm">
+                          {error}
+                        </p>
+
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Submit */}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`group relative w-full overflow-hidden rounded-2xl px-5 py-4 text-sm font-black text-white shadow-xl transition-all duration-300 hover:-translate-y-1 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      projectType === "excel"
+                        ? "bg-gradient-to-r from-emerald-700 via-green-600 to-teal-600 shadow-emerald-600/20 hover:shadow-emerald-600/30"
+                        : "bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 shadow-blue-600/20 hover:shadow-blue-600/30"
+                    }`}
+                  >
+
+                    <span className="absolute inset-y-0 -left-[120%] w-1/2 skew-x-[-20deg] bg-gradient-to-r from-transparent via-white/30 to-transparent transition-all duration-700 group-hover:left-[140%]" />
+
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+
+                      {loading ? (
+                        <>
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+
+                          <span>
+                            در حال بررسی پروژه...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1">
+                            🚀
+                          </span>
+
+                          <span>
+                            بررسی و نمره‌دهی پروژه
+                          </span>
+                        </>
+                      )}
+
+                    </span>
+
+                  </button>
+
+                </form>
+              </div>
+            </section>
+          </>
+        )}
 
         {/* ===================================================
             RESULT
@@ -899,8 +1452,6 @@ export default function StudentGrader({
             className="mt-7 overflow-hidden rounded-[1.7rem] border border-white/30 bg-white/[0.97] shadow-[0_30px_100px_rgba(0,0,0,0.4)] animate-resultIn sm:mt-9 sm:rounded-[2rem]"
           >
 
-            {/* Result Header */}
-
             <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-900 px-5 py-10 text-center text-white">
 
               <div className="absolute right-[-70px] top-[-70px] h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl animate-pulse" />
@@ -910,14 +1461,20 @@ export default function StudentGrader({
               <div className="relative">
 
                 <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[25px] border border-white/20 bg-white/10 text-4xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl animate-resultIcon">
-
-                  {result.passed ? "🎉" : "📘"}
-
+                  {result.passed
+                    ? "🎉"
+                    : "📘"}
                 </div>
 
                 <h2 className="mt-5 text-2xl font-black sm:text-3xl">
                   نتیجه پروژه
                 </h2>
+
+                <p className="mt-2 text-xs font-bold text-cyan-300">
+                  {projectType === "excel"
+                    ? "Excel"
+                    : "Word"}
+                </p>
 
                 <p className="mt-2 break-words text-sm text-white/70">
                   {result.student_name}
@@ -996,7 +1553,9 @@ export default function StudentGrader({
                 <div className="group rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 text-center shadow-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-xl">
 
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl shadow-md transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110">
-                    {result.passed ? "✅" : "🔧"}
+                    {result.passed
+                      ? "✅"
+                      : "🔧"}
                   </div>
 
                   <p className="mt-3 text-sm font-bold text-indigo-700">
@@ -1004,6 +1563,7 @@ export default function StudentGrader({
                   </p>
 
                   <div className="mt-3">
+
                     <span
                       className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black ${
                         result.passed
@@ -1011,12 +1571,15 @@ export default function StudentGrader({
                           : "bg-amber-100 text-amber-700"
                       }`}
                     >
-                      {result.passed ? "✓" : "!"}
+                      {result.passed
+                        ? "✓"
+                        : "!"}
 
                       {result.passed
                         ? "موفق"
                         : "نیاز به اصلاح"}
                     </span>
+
                   </div>
 
                   <p className="mt-3 text-xs font-bold text-slate-500">
@@ -1041,6 +1604,7 @@ export default function StudentGrader({
                       </div>
 
                       <div>
+
                         <h3 className="font-black text-slate-900">
                           بررسی‌های انجام‌شده
                         </h3>
@@ -1048,6 +1612,7 @@ export default function StudentGrader({
                         <p className="mt-1 text-xs leading-5 text-slate-500">
                           تعداد موارد بررسی‌شده توسط سیستم
                         </p>
+
                       </div>
 
                     </div>
@@ -1083,6 +1648,7 @@ export default function StudentGrader({
                   </div>
 
                   <div>
+
                     <h3 className="font-black text-slate-900">
                       بازخورد سیستم
                     </h3>
@@ -1090,6 +1656,7 @@ export default function StudentGrader({
                     <p className="text-xs text-slate-500">
                       پیشنهادها و نتیجه بررسی پروژه
                     </p>
+
                   </div>
 
                 </div>
@@ -1114,6 +1681,7 @@ export default function StudentGrader({
                       </div>
 
                       <div>
+
                         <h3 className="font-black text-emerald-900">
                           فایل ذخیره شد
                         </h3>
@@ -1121,6 +1689,7 @@ export default function StudentGrader({
                         <p className="mt-1 text-xs leading-5 text-emerald-700">
                           پروژه شما با موفقیت در Google Drive ذخیره شد.
                         </p>
+
                       </div>
 
                     </div>
@@ -1166,6 +1735,7 @@ export default function StudentGrader({
                 d="M20 42C29 39 36 39 45 43C49 45 53 45 57 42C54 51 46 56 37 54C30 52 25 48 20 42Z"
                 opacity="0.65"
               />
+
             </svg>
 
           </div>
@@ -1175,7 +1745,7 @@ export default function StudentGrader({
           </p>
 
           <p className="mt-1 text-xs text-white/40">
-            سامانه هوشمند نمره‌دهی پروژه‌های Excel
+            سامانه هوشمند نمره‌دهی پروژه‌ها
           </p>
 
           <div className="mx-auto mt-5 h-px max-w-xs bg-gradient-to-r from-transparent via-cyan-300/30 to-transparent" />
@@ -1185,6 +1755,7 @@ export default function StudentGrader({
           </p>
 
         </footer>
+
       </div>
 
       {/* =====================================================
